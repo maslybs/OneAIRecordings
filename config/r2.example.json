@@ -1,0 +1,8 @@
+{
+  "accountId": "cloudflare-account-id",
+  "bucket": "meet-recordings",
+  "accessKeyId": "r2-access-key-id",
+  "secretAccessKey": "r2-secret-access-key",
+  "prefix": "meet-recordings",
+  "publicBaseUrl": "https://<account-id>.r2.cloudflarestorage.com"
+}

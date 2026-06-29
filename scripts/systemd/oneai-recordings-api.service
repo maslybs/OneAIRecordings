@@ -1,0 +1,14 @@
+[Unit]
+Description=OneAIRecordings API
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/oneai-recordings
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node src/cli.js api
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

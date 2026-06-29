@@ -1,0 +1,15 @@
+node_modules/
+.DS_Store
+.env
+.env.*
+!.env.example
+config/config.json
+config/state.json
+secrets/
+recordings/
+logs/
+profile/
+*.bak*
+*.mp4
+*.mp3
+*.mkv

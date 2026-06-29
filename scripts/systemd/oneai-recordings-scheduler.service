@@ -1,0 +1,14 @@
+[Unit]
+Description=OneAIRecordings Scheduler
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/oneai-recordings
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node src/cli.js scheduler
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

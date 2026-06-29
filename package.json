@@ -1,0 +1,26 @@
+{
+  "name": "oneai-recordings",
+  "version": "0.1.0",
+  "description": "Self-hosted meeting recorder for Google Meet, with provider architecture for Zoom and other platforms.",
+  "type": "module",
+  "private": false,
+  "license": "MIT",
+  "bin": {
+    "oneai-recordings": "src/cli.js"
+  },
+  "scripts": {
+    "api": "node src/cli.js api",
+    "scheduler": "node src/cli.js scheduler",
+    "record": "node src/cli.js record",
+    "doctor": "node src/cli.js doctor",
+    "check": "find src -name '*.js' -print0 | xargs -0 -n1 node --check"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "googleapis": "^144.0.0",
+    "puppeteer-core": "^23.11.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
