@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-export const APP_DIR = '/opt/meet-recorder-bot';
-export const CONFIG_PATH = path.join(APP_DIR, 'config/config.json');
-export const STATE_PATH = path.join(APP_DIR, 'config/state.json');
+export const APP_DIR = process.env.ONEAI_APP_DIR || process.cwd();
+export const CONFIG_PATH = process.env.ONEAI_CONFIG_PATH || path.join(APP_DIR, 'config/config.json');
+export const STATE_PATH = process.env.ONEAI_STATE_PATH || path.join(APP_DIR, 'config/state.json');
 
 export function readJson(file, fallback = {}) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }

@@ -1,14 +1,15 @@
 [Unit]
-Description=OneAIRecordings API
+Description=OneAI Recordings API (legacy Google Meet recorder)
 After=network.target
 
 [Service]
+Type=simple
 WorkingDirectory=/opt/oneai-recordings
 Environment=NODE_ENV=production
-ExecStart=/usr/bin/node src/cli.js api
+Environment=ONEAI_APP_DIR=/opt/oneai-recordings
+ExecStart=/usr/bin/node src/cli.js legacy:api
 Restart=always
 RestartSec=5
-User=root
 
 [Install]
 WantedBy=multi-user.target

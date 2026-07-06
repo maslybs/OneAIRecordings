@@ -1,36 +1,102 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process';
-import { loadConfig } from './config.js';
-import { createLogger } from './logger.js';
+import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { parseArgs } from './utils.js';
-import { createProvider, guessProvider } from './providers/index.js';
-import { RecordingSession } from './recorder/session.js';
-import { ApiServer } from './server/api.js';
-import { Scheduler } from './scheduler.js';
 
 const args = parseArgs(process.argv.slice(2));
 const command = args._[0] || 'api';
-const cfg = loadConfig(args.config);
-const logger = createLogger({ logsDir: cfg.logsDir, name: 'bot' });
 
 try {
-  if (command === 'api') {
+  if (isLegacyCommand(command)) {
+    await runLegacy(command, process.argv.slice(3));
+  } else {
+    await runModular(command, args);
+  }
+} catch (error) {
+  console.error(error?.stack || error?.message || String(error));
+  process.exitCode = 1;
+}
+
+async function runModular(command, args) {
+  const modularCommand = command.startsWith('modular:') ? command.slice('modular:'.length) : command;
+  const { loadConfig } = await import('./config.js');
+  const { createLogger } = await import('./logger.js');
+  const cfg = loadConfig(args.config);
+  const logger = createLogger({ logsDir: cfg.logsDir, name: 'bot' });
+
+  if (modularCommand === 'api') {
+    const { ApiServer } = await import('./server/api.js');
     new ApiServer({ cfg, logger }).listen();
-  } else if (command === 'scheduler') {
+  } else if (modularCommand === 'scheduler') {
+    const { Scheduler } = await import('./scheduler.js');
     await new Scheduler({ cfg, logger }).start();
-  } else if (command === 'record') {
+  } else if (modularCommand === 'record') {
     await recordOnce(args, cfg, logger);
-  } else if (command === 'doctor') {
+  } else if (modularCommand === 'doctor') {
     doctor(cfg);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
-} catch (error) {
-  logger.error('fatal', error);
-  process.exitCode = 1;
+}
+
+async function runLegacy(command, passthroughArgs) {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const scripts = {
+    'add-job': 'add-job.js',
+    'api': 'api-server.js',
+    'auth:calendar': 'auth-calendar.js',
+    'auth:drive': 'auth-drive.js',
+    'calendar:sync': 'calendar-sync.js',
+    'doctor': 'doctor.js',
+    'record': 'record.js',
+    'scheduler': 'scheduler.js',
+    'legacy:add-job': 'add-job.js',
+    'legacy:auth-calendar': 'auth-calendar.js',
+    'legacy:auth-drive': 'auth-drive.js',
+    'legacy:calendar-sync': 'calendar-sync.js',
+    'legacy:record': 'record.js',
+    'legacy:api': 'api-server.js',
+    'legacy:scheduler': 'scheduler.js',
+    'legacy:doctor': 'doctor.js'
+  };
+  const script = scripts[command];
+  if (!script) throw new Error(`Unknown command: ${command}`);
+
+  await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [path.join(here, 'legacy', script), ...passthroughArgs], {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+      env: process.env
+    });
+    child.on('error', reject);
+    child.on('exit', (code, signal) => {
+      if (signal) {
+        process.kill(process.pid, signal);
+        return;
+      }
+      process.exitCode = code ?? 0;
+      resolve();
+    });
+  });
+}
+
+function isLegacyCommand(command) {
+  return [
+    'add-job',
+    'api',
+    'auth:calendar',
+    'auth:drive',
+    'calendar:sync',
+    'doctor',
+    'record',
+    'scheduler'
+  ].includes(command) || command.startsWith('legacy:');
 }
 
 async function recordOnce(args, cfg, logger) {
+  const { createProvider, guessProvider } = await import('./providers/index.js');
+  const { RecordingSession } = await import('./recorder/session.js');
   if (!args.url) throw new Error('--url is required');
   const provider = createProvider(args.provider || guessProvider(args.url), cfg, logger);
   const session = new RecordingSession({ cfg, provider, logger });
