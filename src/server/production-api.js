@@ -41,10 +41,12 @@ function allowedConfigPatch(input) {
   const cfg = readJson(CONFIG_PATH, {});
   const allowedTop = new Set([
     'timezone', 'botName', 'botNameBase', 'botNameRandomSuffix', 'botNameRandomDigits',
-    'resolution', 'fps', 'videoBitrate', 'audioBitrate', 'audioChannels', 'fullscreen',
+    'resolution', 'fps', 'videoBitrate', 'videoPreset', 'audioBitrate', 'audioChannels', 'fullscreen',
+    'maxRecordingMinutesAfterJoin', 'segmentedRecording', 'segmentSeconds', 'keepSegmentsAfterFinalize',
+    'ffmpegThreadQueueSize', 'createMp3AfterRecording', 'uploadMp3ToR2', 'mp3Bitrate',
     'minParticipants', 'autoStopBelowParticipantsSeconds', 'participantCheckMs', 'minRecordingSecondsToKeep',
     'joinWaitMinutes', 'sendChatOnRecordingStart', 'recordingStartMessage', 'sendChatOnRecordingStop', 'recordingStopMessage',
-    'playStartBeep', 'storage', 'cleanupLocalAfterUpload', 'calendar', 'r2'
+    'playStartBeep', 'storage', 'cleanupLocalAfterUpload', 'cleanupPreviousLocalRecordingsAfterR2Upload', 'calendar', 'r2'
   ]);
   for (const [key, value] of Object.entries(input || {})) {
     if (!allowedTop.has(key)) continue;
