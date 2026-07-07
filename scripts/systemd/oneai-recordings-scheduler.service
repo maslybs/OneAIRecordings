@@ -1,5 +1,5 @@
 [Unit]
-Description=OneAI Recordings Scheduler (legacy Google Meet recorder)
+Description=OneAI Recordings Scheduler
 After=network.target oneai-recordings-api.service
 
 [Service]
@@ -7,7 +7,7 @@ Type=simple
 WorkingDirectory=/opt/oneai-recordings
 Environment=NODE_ENV=production
 Environment=ONEAI_APP_DIR=/opt/oneai-recordings
-ExecStart=/usr/bin/node src/cli.js legacy:scheduler
+ExecStart=/usr/bin/node src/cli.js scheduler
 Restart=always
 RestartSec=5
 

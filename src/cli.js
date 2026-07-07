@@ -43,14 +43,14 @@ async function runModular(command, args) {
 async function runLegacy(command, passthroughArgs) {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const scripts = {
-    'add-job': 'add-job.js',
-    'api': 'api-server.js',
-    'auth:calendar': 'auth-calendar.js',
-    'auth:drive': 'auth-drive.js',
-    'calendar:sync': 'calendar-sync.js',
-    'doctor': 'doctor.js',
-    'record': 'record.js',
-    'scheduler': 'scheduler.js',
+    'add-job': '../jobs/add-job.js',
+    'api': '../api-server.js',
+    'auth:calendar': '../calendar/auth.js',
+    'auth:drive': '../storage/drive-auth.js',
+    'calendar:sync': '../calendar/sync.js',
+    'doctor': '../diagnostics/doctor.js',
+    'record': '../record.js',
+    'scheduler': '../scheduler/production.js',
     'legacy:add-job': 'add-job.js',
     'legacy:auth-calendar': 'auth-calendar.js',
     'legacy:auth-drive': 'auth-drive.js',

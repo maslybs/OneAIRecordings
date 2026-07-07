@@ -2,23 +2,19 @@
 
 Open-source self-hosted recorder for online meetings.
 
-The repository currently has two runtime modes:
+## Status
 
-1. **Legacy mode** — production-tested Google Meet recorder copied from the VPS production bot.
-2. **Modular mode** — new open-source architecture, under active refactor.
-
-Google Meet legacy mode is production-tested. Zoom provider is scaffold only.
-
-## Current status
+The default runtime uses structured production code. The old copied production files remain in `src/legacy/` only as a backup.
 
 | Area | Status |
 | --- | --- |
-| Google Meet legacy mode | production-tested |
-| Modular Google Meet provider | baseline implementation, under refactor |
-| Zoom provider | scaffold only, not production-ready |
-| Cloudflare R2 storage | supported |
-| Google Drive upload | supported in legacy mode when OAuth secrets are configured |
-| Calendar sync | supported in legacy mode when OAuth secrets are configured |
+| Google Meet recording | supported |
+| Calendar sync | supported |
+| Manual jobs | supported |
+| API panel endpoints | supported |
+| Cloudflare R2 upload | supported |
+| Google Drive upload | supported |
+| Zoom provider | scaffold only |
 
 ## Install
 
@@ -30,26 +26,28 @@ mkdir -p logs recordings secrets profile
 
 Do not commit runtime config, secrets, logs or recordings.
 
-## Legacy mode
-
-Legacy mode keeps the production bot logic isolated in:
-
-```txt
-src/legacy/
-```
-
-It is intentionally preserved close to production behavior first. Refactoring should happen gradually and only when behavior remains 1:1.
-
-### Legacy commands
+## Run
 
 ```bash
-node src/cli.js legacy:record --url=https://meet.google.com/xxx-yyyy-zzz --title="Demo" --duration=120
-node src/cli.js legacy:api
-node src/cli.js legacy:scheduler
-node src/cli.js legacy:doctor
+node src/cli.js record --url=https://meet.google.com/xxx-yyyy-zzz --title="Demo" --duration=120
+node src/cli.js api
+node src/cli.js scheduler
+node src/cli.js doctor
+node src/cli.js auth:calendar
+node src/cli.js auth:drive
+node src/cli.js calendar:sync
+node src/cli.js add-job
 ```
 
-Legacy path configuration:
+Process-manager entrypoints:
+
+```bash
+node src/record.js --url=https://meet.google.com/xxx-yyyy-zzz --title="Demo" --duration=120
+node src/api-server.js
+node src/scheduler-legacy.js
+```
+
+Path configuration:
 
 ```bash
 ONEAI_APP_DIR=/opt/oneai-recordings
@@ -57,120 +55,73 @@ ONEAI_CONFIG_PATH=/opt/oneai-recordings/config/config.json
 ONEAI_STATE_PATH=/opt/oneai-recordings/config/state.json
 ```
 
-If these variables are not set, legacy mode uses the current working directory.
+## Structure
 
-## Modular mode
-
-Modular mode is the new open-source structure:
-
-```bash
-npm run record -- --provider=meet --url=https://meet.google.com/xxx-yyyy-zzz --title="Demo" --duration=120
-npm run api
-npm run scheduler
-npm run doctor
+```txt
+src/
+  audio/
+  browser/
+  calendar/
+  diagnostics/
+  jobs/
+  providers/meet/
+  recorder/
+  runtime/
+  server/
+  storage/
+  legacy/
 ```
 
-This mode is intended as the clean architecture target. It should not replace legacy production behavior until each extracted module is verified.
-
-## R2 setup
-
-Create `secrets/r2.json` or provide equivalent environment variables supported by the storage layer.
-
-Example `secrets/r2.json`:
-
-```json
-{
-  "accountId": "cloudflare-account-id",
-  "bucket": "meet-recordings",
-  "accessKeyId": "r2-access-key-id",
-  "secretAccessKey": "r2-secret-access-key",
-  "prefix": "meet-recordings",
-  "publicBaseUrl": "https://<account-id>.r2.cloudflarestorage.com"
-}
-```
+`src/legacy/` is a backup and comparison copy. Normal commands do not use it.
 
 ## API
 
-Legacy API:
-
 ```bash
-node src/cli.js legacy:api
-```
-
-Modular API:
-
-```bash
-npm run api
+node src/cli.js api
 ```
 
 Start a recording:
 
 ```bash
-curl -X POST http://localhost:8787/record/start \
+curl -X POST http://localhost:8787/<base-path>/record/start \
   -H 'content-type: application/json' \
-  -d '{"provider":"meet","url":"https://meet.google.com/xxx-yyyy-zzz","title":"Demo"}'
+  -H 'x-bot-api-key: <token>' \
+  -d '{"meetUrl":"https://meet.google.com/xxx-yyyy-zzz","title":"Demo"}'
 ```
 
-Stop a recording:
+The API base path and token come from:
 
-```bash
-curl -X POST http://localhost:8787/record/stop
+```txt
+secrets/panel-api.json
 ```
 
 ## Systemd
 
-Production-compatible legacy examples are in:
+Examples are in:
 
 ```txt
 scripts/systemd/oneai-recordings-api.service
 scripts/systemd/oneai-recordings-scheduler.service
 ```
 
-They run:
+They should run:
 
 ```ini
-ExecStart=/usr/bin/node src/cli.js legacy:api
-ExecStart=/usr/bin/node src/cli.js legacy:scheduler
+ExecStart=/usr/bin/node src/cli.js api
+ExecStart=/usr/bin/node src/cli.js scheduler
 ```
 
-Set `WorkingDirectory` and `ONEAI_APP_DIR` to the deployment path on the server.
+## Legacy Backup
 
-## Refactor plan
+Explicit old-code commands are still available:
 
-Refactor legacy logic gradually:
-
-```txt
-src/legacy/record.js
-↓
-src/browser/xvfb.js
-src/browser/chromium.js
-src/audio/pulse.js
-src/providers/meet/join.js
-src/providers/meet/ui.js
-src/providers/meet/chat.js
-src/providers/meet/participants.js
-src/recorder/ffmpeg.js
-src/recorder/finalize.js
-src/recorder/mp3.js
-src/storage/r2.js
+```bash
+node src/cli.js legacy:record
+node src/cli.js legacy:api
+node src/cli.js legacy:scheduler
 ```
 
-Rule: after every extracted module, behavior must stay 1:1 with legacy mode.
-
-## Project structure
-
-```txt
-src/
-  cli.js
-  config.js
-  logger.js
-  legacy/
-  providers/
-  recorder/
-  storage/
-  server/
-  scheduler.js
-```
+Use them only for rollback or comparison.
 
 ## Security
 
@@ -184,5 +135,3 @@ config/config.json
 config/state.json
 *.bak*
 ```
-
-Use a dedicated Google account for the recorder in production and invite it to calendar events.
