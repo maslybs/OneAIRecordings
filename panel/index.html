@@ -47,8 +47,11 @@
     }
 
     button:hover { transform: translateY(-1px); }
+    button:disabled { cursor: wait; opacity: .78; transform: none; }
     button.secondary { color: var(--ink); background: #e3e9d9; }
     button.danger { background: var(--red); }
+    button.state-ok { color: #fffdf7; background: var(--green); }
+    button.state-error { color: #fffdf7; background: var(--red); }
     button.slim { padding: 8px 12px; font-size: 14px; }
 
     input, textarea, select {
@@ -219,9 +222,27 @@
       white-space: pre-wrap;
     }
 
+    body.locked .hero,
+    body.locked #app,
+    body.locked #logout,
+    body.locked #refreshTop {
+      display: none !important;
+    }
+
+    body.locked .shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px 0;
+    }
+
     .login {
-      width: min(460px, 100%);
+      width: min(360px, 100%);
       margin: 44px auto;
+    }
+
+    body.locked .login {
+      margin: 0 auto;
     }
 
     .notice {
@@ -245,7 +266,7 @@
     }
   </style>
 </head>
-<body>
+<body class="locked">
   <div class="shell">
     <header class="hero">
       <div>
@@ -260,8 +281,6 @@
     </header>
 
     <section id="login" class="card login">
-      <h2>Вхід</h2>
-      <p class="muted">Пароль перевіряє Cloudflare Worker. Секретні ключі сервера не показуються в браузері.</p>
       <label>Пароль панелі
         <input id="pass" type="password" autocomplete="current-password" placeholder="Введи пароль">
       </label>
@@ -566,24 +585,66 @@
       setTimeout(() => { if ($(id)) $(id).textContent = ''; }, 4500);
     }
 
+    async function withButtonStatus(id, labels, action) {
+      const button = $(id);
+      if (!button || button.disabled) return;
+      const idleText = button.dataset.idleText || button.textContent.trim();
+      button.dataset.idleText = idleText;
+      if (button.dataset.resetTimer) clearTimeout(Number(button.dataset.resetTimer));
+      button.disabled = true;
+      button.title = '';
+      button.classList.remove('state-ok', 'state-error');
+      button.textContent = labels.pending || 'Виконую...';
+      try {
+        const result = await action();
+        button.textContent = labels.success || 'Готово';
+        button.classList.add('state-ok');
+        return result;
+      } catch (error) {
+        const message = error?.message || String(error);
+        button.textContent = labels.error || 'Помилка';
+        button.title = message;
+        button.classList.add('state-error');
+        if (labels.messageId) showMessage(labels.messageId, message);
+      } finally {
+        button.dataset.resetTimer = String(setTimeout(() => {
+          button.disabled = false;
+          button.textContent = idleText;
+          button.title = '';
+          button.classList.remove('state-ok', 'state-error');
+        }, labels.resetMs || 1800));
+      }
+    }
+
+    function bindButtonStatus(id, labels) {
+      const button = $(id);
+      if (!button || typeof button.onclick !== 'function') return;
+      const original = button.onclick;
+      button.onclick = event => withButtonStatus(id, labels, () => original.call(button, event));
+    }
+
+    function showApp() {
+      document.body.classList.remove('locked');
+      $('login').classList.add('hidden');
+      $('app').classList.remove('hidden');
+      $('logout').classList.remove('hidden');
+    }
+
     async function login() {
       try {
         await api('/login', { method: 'POST', body: { password: $('pass').value } });
-        $('login').classList.add('hidden');
-        $('app').classList.remove('hidden');
-        $('logout').classList.remove('hidden');
+        showApp();
         await refresh();
       } catch (error) {
         $('loginMsg').textContent = error.message;
+        throw error;
       }
     }
 
     async function checkSession() {
       try {
         await api('/me');
-        $('login').classList.add('hidden');
-        $('app').classList.remove('hidden');
-        $('logout').classList.remove('hidden');
+        showApp();
         await refresh();
       } catch {}
     }
@@ -700,6 +761,7 @@
         await refresh();
       } catch (error) {
         showMessage('recordMsg', error.message);
+        throw error;
       }
     };
 
@@ -797,6 +859,22 @@
       $('r2SecretAccessKey').value = '';
       await refresh();
     };
+
+    bindButtonStatus('loginBtn', { pending: 'Вхід...', success: 'Увійшов', error: 'Не увійшло', messageId: 'loginMsg' });
+    bindButtonStatus('refreshTop', { pending: 'Оновлення...', success: 'Оновлено', error: 'Помилка' });
+    bindButtonStatus('refreshBtn', { pending: 'Оновлення...', success: 'Оновлено', error: 'Помилка' });
+    bindButtonStatus('schedulerStart', { pending: 'Увімкнення...', success: 'Увімкнено', error: 'Помилка' });
+    bindButtonStatus('schedulerStop', { pending: 'Вимкнення...', success: 'Вимкнено', error: 'Помилка' });
+    bindButtonStatus('recordBtn', { pending: 'Запуск...', success: 'Запущено', error: 'Помилка', messageId: 'recordMsg' });
+    bindButtonStatus('saveRecording', { pending: 'Збереження...', success: 'Збережено', error: 'Помилка' });
+    bindButtonStatus('saveMeet', { pending: 'Збереження...', success: 'Збережено', error: 'Помилка' });
+    bindButtonStatus('saveAutostop', { pending: 'Збереження...', success: 'Збережено', error: 'Помилка' });
+    bindButtonStatus('saveMessages', { pending: 'Збереження...', success: 'Збережено', error: 'Помилка' });
+    bindButtonStatus('saveCalendar', { pending: 'Збереження...', success: 'Збережено', error: 'Помилка' });
+    bindButtonStatus('syncCalendar', { pending: 'Синхронізація...', success: 'Синхронізовано', error: 'Помилка' });
+    bindButtonStatus('saveCalendarClient', { pending: 'Збереження...', success: 'Збережено', error: 'Помилка' });
+    bindButtonStatus('saveStorage', { pending: 'Збереження...', success: 'Збережено', error: 'Помилка' });
+    bindButtonStatus('saveR2Secrets', { pending: 'Запис ключів...', success: 'Ключі записано', error: 'Помилка' });
 
     $('nav').addEventListener('click', event => {
       const button = event.target.closest('button[data-target]');
